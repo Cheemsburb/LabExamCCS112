@@ -7,59 +7,58 @@ use Illuminate\Http\Request;
 
 class TaskController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    // index: GET /api/tasks - Fetch all tasks
     public function index()
     {
-        //
+        // Simply return all tasks. Laravel automatically converts this to JSON.
+        return Task::all();
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
+    // store: POST /api/tasks - Create a new task
     public function store(Request $request)
     {
-        //
+        // 1. Validate the incoming request data
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'status' => 'in:pending,in-progress,completed|sometimes', // 'sometimes' allows default 'pending'
+            'due_date' => 'nullable|date',
+        ]);
+
+        // 2. Create the task and return the new resource with a 201 status
+        $task = Task::create($validated);
+        return response()->json($task, 201); 
     }
 
-    /**
-     * Display the specified resource.
-     */
+    // show: GET /api/tasks/{task} - Get a specific task
     public function show(Task $task)
     {
-        //
+        // Laravel's Route Model Binding automatically injects the Task object
+        // (If the ID doesn't exist, it automatically throws a 404)
+        return $task;
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Task $task)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
+    // update: PUT/PATCH /api/tasks/{task} - Update a specific task
     public function update(Request $request, Task $task)
     {
-        //
+        // 1. Validate the request data. Rules are similar to 'store'.
+        $validated = $request->validate([
+            'title' => 'string|max:255',
+            'description' => 'nullable|string',
+            'status' => 'in:pending,in-progress,completed',
+            'due_date' => 'nullable|date',
+        ]);
+
+        // 2. Update the task
+        $task->update($validated);
+        return response()->json($task, 200);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    // destroy: DELETE /api/tasks/{task} - Delete a specific task
     public function destroy(Task $task)
     {
-        //
+        $task->delete();
+        // Return a 204 No Content status, as is standard for successful deletions
+        return response()->json(null, 204);
     }
 }
