@@ -1,60 +1,89 @@
 import React, { useState, useEffect } from 'react';
-// Import the new components you will create
-import TaskList from './components/TaskList';
 import TaskForm from './components/TaskForm';
-import './App.css'; 
+import TaskList from './components/TaskList';
+import TaskEdit from './components/TaskEdit';
+import './App.css';
 
-// Define your Laravel API's URL
-// Make sure this port (8000) matches your Laravel server
-const API_URL = 'http://localhost:8000/api';
+const API_URL = 'http://localhost:8000/api/tasks';
 
-function App() {
+const App = () => {
   const [tasks, setTasks] = useState([]);
+  const [editingTask, setEditingTask] = useState(null);
 
-  // 1. Objective: Fetch and display data
-  const fetchTasks = () => {
-    // This uses your 'GET api/tasks' route
-    fetch(`${API_URL}/tasks`)
-      .then(response => response.json())
-      .then(data => setTasks(data))
-      .catch(error => console.error('Error fetching tasks:', error));
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      setTasks(data);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    }
   };
 
-  // Run fetchTasks() once when the component loads
   useEffect(() => {
     fetchTasks();
   }, []);
 
-  // 2. Objective: Add a new task
-  const handleAddTask = (taskData) => {
-    // This uses your 'POST api/tasks' route
-    fetch(`${API_URL}/tasks`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(taskData)
-    })
-    .then(response => response.json())
-    .then(() => {
-      // After adding, refresh the list to show the new task
+  const handleAddTask = async (taskData) => {
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...taskData, status: 'pending' }),
+      });
       fetchTasks();
-    })
-    .catch(error => console.error('Error adding task:', error));
+    } catch (error) {
+      console.error('Error adding task:', error);
+    }
+  };
+
+  const handleUpdateTask = async (taskData) => {
+    try {
+      const res = await fetch(`${API_URL}/${taskData.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(taskData),
+      });
+      if (!res.ok) throw new Error('Failed to update task');
+      setEditingTask(null);
+      fetchTasks();
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
+
+  const handleDeleteTask = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    try {
+      const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete task');
+      fetchTasks();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
   };
 
   return (
-    <div className="App">
-      <h1>Task Management System</h1>
-      
-      {/* Component for the "Add new task" form [cite: 81] */}
-      <TaskForm onSubmit={handleAddTask} />
-
-      {/* Component to "Display list of tasks" [cite: 81] */}
-      <TaskList tasks={tasks} />
+    <div className="container">
+      <h1 className="app-title">Task Management System</h1>
+      {editingTask ? (
+        <TaskEdit
+          task={editingTask}
+          onUpdate={handleUpdateTask}
+          onCancel={() => setEditingTask(null)}
+        />
+      ) : (
+        <>
+          <TaskForm onSubmit={handleAddTask} />
+          <TaskList
+            tasks={tasks}
+            onEdit={(task) => setEditingTask(task)}
+            onDelete={handleDeleteTask}
+          />
+        </>
+      )}
     </div>
   );
-}
+};
 
 export default App;
